@@ -2,6 +2,7 @@ package com.example.anthero.myapplication;
 
 import android.app.Dialog;
 import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
 import android.widget.TextView;
 
 public class BaseActvity extends AppCompatActivity {
@@ -9,14 +10,15 @@ public class BaseActvity extends AppCompatActivity {
     private Dialog progressDialog;
     private boolean  progress=false;
 
-    public void statrProgressDialog(){
+
+    public void statrProgressDialog(String text){
         if(progressDialog == null){
             progressDialog = new Dialog(this,R.style.progress_dialog);
             progressDialog.setContentView(R.layout.dialog);
-            progressDialog.setCancelable(true);
+            progressDialog.setCancelable(false);
             progressDialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
             TextView msg = (TextView) progressDialog.findViewById(R.id.id_tv_loadingmsg);
-            msg.setText("正在搜索");
+            msg.setText(text);
         }
         progress=true;
         progressDialog.show();
@@ -25,6 +27,7 @@ public class BaseActvity extends AppCompatActivity {
         if(progress){
             progress=false;
             progressDialog.dismiss();
+            Log.d("cancel", " cancel");
         }
     }
     @Override
