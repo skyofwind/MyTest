@@ -5,16 +5,13 @@ buildscript {
     repositories {
         google()
         jcenter()
-        maven { url 'http://maven.aliyun.com/nexus/content/groups/public/' }
-        maven { url "https://dl.bintray.com/thelasterstar/maven/" }
+
         mavenCentral()
-        maven { url 'https://jitpack.io' }
-        maven { url "https://maven.google.com" }
-        maven { url 'https://maven.fabric.io/public' }
+
     }
     dependencies {
         classpath 'com.android.tools.build:gradle:3.2.0-alpha04'
-        
+        classpath 'com.jakewharton:butterknife-gradle-plugin:8.8.1'
 
         // NOTE: Do not place your application dependencies here; they belong
         // in the individual module build.gradle files

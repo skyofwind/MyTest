@@ -1,4 +1,4 @@
-package com.example.anthero.myapplication;
+package com.example.anthero.myapplication.modle;
 
 
 public class DeviceStatus {
@@ -6,7 +6,7 @@ public class DeviceStatus {
 
     private int meshAddress;//地址
     private boolean isOnline;//在线状态
-    private int status;//状态
+    private int status;//状态//0关灯//1开灯
     private int pid;//id
 
     public DeviceStatus(int meshAddress, int seq, int status, int pid) {
@@ -70,5 +70,12 @@ public class DeviceStatus {
 
     public boolean isChanged(DeviceStatus deviceStatus) {
         return (deviceStatus.getStatus() == 0 && status != 0) || (deviceStatus.getStatus() != 0 && status == 0) || isOnline != deviceStatus.isOnline;
+    }
+
+    public String toString(){
+        return "pid = "+pid
+                +" status = "+status
+                +" isOnline = "+isOnline
+                +" meshAddress = "+meshAddress;
     }
 }

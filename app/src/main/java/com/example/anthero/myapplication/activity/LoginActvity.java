@@ -1,4 +1,4 @@
-package com.example.anthero.myapplication;
+package com.example.anthero.myapplication.activity;
 
 import android.annotation.SuppressLint;
 import android.bluetooth.BluetoothGatt;
@@ -6,13 +6,11 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.support.annotation.Nullable;
-import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Toast;
 
-import com.antheroiot.mesh.CommandFactory;
 import com.antheroiot.mesh.MeshProtocol;
 import com.clj.fastble.BleManager;
 import com.clj.fastble.callback.BleGattCallback;
@@ -21,8 +19,10 @@ import com.clj.fastble.callback.BleReadCallback;
 import com.clj.fastble.callback.BleWriteCallback;
 import com.clj.fastble.data.BleDevice;
 import com.clj.fastble.exception.BleException;
-import com.example.anthero.myapplication.activity.BaseActvity;
-import com.telink.util.ArraysUtils;
+import com.example.anthero.myapplication.R;
+import com.example.anthero.myapplication.minterface.BleDealListener;
+import com.example.anthero.myapplication.modle.DeviceStatus;
+import com.example.anthero.myapplication.utils.ControlUtil;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -38,8 +38,6 @@ public class LoginActvity extends BaseActvity {
     EditText password;
     @BindView(R.id.login)
     Button login;
-    @BindView(R.id.test)
-    Button test;
 
     private BleDevice bleDevice;
     private List<DeviceStatus> deviceStatuses = new ArrayList<>();
@@ -73,12 +71,6 @@ public class LoginActvity extends BaseActvity {
                 login();
             }
         });
-        test.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                printStatus();
-            }
-        });
     }
 
     private void getData() {
@@ -99,206 +91,125 @@ public class LoginActvity extends BaseActvity {
             return;
         }
         MeshProtocol.getInstance().preLogin(bleDevice.getMac(), bleDevice.getName(), password.getText().toString());//
-        connectDevice(bleDevice);//连接设备
+        ControlUtil.getInstance().connectDevice(bleDevice, connectDevice);
     }
 
-    private void connectDevice(BleDevice bleDevice) {
-        BleManager.getInstance().connect(bleDevice.getMac(), new BleGattCallback() {
-            @Override
-            public void onStartConnect() {//开始连接
-                Message message = new Message();
-                message.what = 0x01;
-                message.obj = "正在连接蓝牙设备";
-                handler.sendMessage(message);
-            }
+    private BleGattCallback connectDevice = new BleGattCallback() {
+        @Override
+        public void onStartConnect() {//开始连接
+            Message message = new Message();
+            message.what = 0x01;
+            message.obj = "正在连接蓝牙设备";
+            handler.sendMessage(message);
+        }
 
-            @Override
-            public void onConnectFail(BleDevice bleDevice, BleException exception) {//连接失败
+        @Override
+        public void onConnectFail(BleDevice bleDevice, BleException exception) {//连接失败
+            handler.sendEmptyMessage(0x02);
+            Toast.makeText(LoginActvity.this, "蓝牙连接失败", Toast.LENGTH_SHORT).show();
+        }
+
+        @Override
+        public void onConnectSuccess(BleDevice bleDevice, BluetoothGatt gatt, int status) {//连接成功
+            //连接成功后，向设备发送登陆验证
+            handler.sendEmptyMessage(0x02);
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            Message message = new Message();
+            message.what = 0x01;
+            message.obj = "登陆验证中";
+            handler.sendMessage(message);
+            ControlUtil.getInstance().access(bleDevice, access);
+        }
+
+        @Override
+        public void onDisConnected(boolean isActiveDisConnected, BleDevice device, BluetoothGatt gatt, int status) {
+
+            gatt.disconnect();
+            gatt.close();
+        }
+    };
+    private BleWriteCallback access = new BleWriteCallback() {
+        @Override
+        public void onWriteSuccess(int current, int total, byte[] justWrite) {
+            //写入成功则检查
+            ControlUtil.getInstance().checkLoginSuccess(bleDevice, checkLoginSuccess);
+        }
+
+        @Override
+        public void onWriteFailure(BleException exception) {
+            //失败则断开连接
+            handler.sendEmptyMessage(0x02);
+            Toast.makeText(LoginActvity.this, "登陆验证失败", Toast.LENGTH_SHORT).show();
+            BleManager.getInstance().disconnect(bleDevice);
+            BleManager.getInstance().disconnectAllDevice();
+        }
+    };
+
+    private BleReadCallback checkLoginSuccess = new BleReadCallback() {
+        @Override
+        public void onReadSuccess(byte[] data) {
+            if (MeshProtocol.getInstance().checkLoginResult(data)) {
+                //登陆成功
                 handler.sendEmptyMessage(0x02);
-                Toast.makeText(LoginActvity.this, "蓝牙连接失败", Toast.LENGTH_SHORT).show();
-            }
-
-            @Override
-            public void onConnectSuccess(BleDevice bleDevice, BluetoothGatt gatt, int status) {//连接成功
-                //连接成功后，向设备发送登陆验证
+                //Toast.makeText(LoginActvity.this, "验证成功", Toast.LENGTH_SHORT).show();
+                ControlUtil.getInstance().setupNotification(bleDevice, setupNotification);
+            } else {
                 handler.sendEmptyMessage(0x02);
-                try {
-                    Thread.sleep(100);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-                Message message = new Message();
-                message.what = 0x01;
-                message.obj = "登陆验证中";
-                handler.sendMessage(message);
-                access();
+                Toast.makeText(LoginActvity.this, "验证失败", Toast.LENGTH_SHORT).show();
             }
 
-            @Override
-            public void onDisConnected(boolean isActiveDisConnected, BleDevice device, BluetoothGatt gatt, int status) {
-
-                gatt.disconnect();
-                gatt.close();
-            }
-        });
-    }
-
-    //连接成功后，向蓝牙设备写入之前的登陆信息
-    private void access() {
-        byte[] bytes = MeshProtocol.getInstance().getLoginPacket();
-        BleManager.getInstance().write(
-                bleDevice,
-                MeshProtocol.SERVICE_MESH.toString(),
-                MeshProtocol.CHARA_PAIR.toString(),
-                bytes,
-                new BleWriteCallback() {
-                    @Override
-                    public void onWriteSuccess(int current, int total, byte[] justWrite) {
-                        //写入成功则检查
-                        checkLoginSuccess();
-                    }
-
-                    @Override
-                    public void onWriteFailure(BleException exception) {
-                        //失败则断开连接
-                        handler.sendEmptyMessage(0x02);
-                        Toast.makeText(LoginActvity.this, "登陆验证失败", Toast.LENGTH_SHORT).show();
-                        BleManager.getInstance().disconnect(bleDevice);
-                        BleManager.getInstance().disconnectAllDevice();
-                    }
-                }
-        );
-    }
-
-    //检查登陆成功的情况
-    private void checkLoginSuccess() {
-        BleManager.getInstance().read(
-                bleDevice,
-                MeshProtocol.SERVICE_MESH.toString(),
-                MeshProtocol.CHARA_PAIR.toString(),
-                new BleReadCallback() {
-                    @Override
-                    public void onReadSuccess(byte[] data) {
-                        if (MeshProtocol.getInstance().checkLoginResult(data)) {
-                            //登陆成功
-                            handler.sendEmptyMessage(0x02);
-                            //Toast.makeText(LoginActvity.this, "验证成功", Toast.LENGTH_SHORT).show();
-                            setupNotification();
-                        } else {
-                            handler.sendEmptyMessage(0x02);
-                            Toast.makeText(LoginActvity.this, "验证失败", Toast.LENGTH_SHORT).show();
-                        }
-
-                    }
-
-                    @Override
-                    public void onReadFailure(BleException exception) {
-                        handler.sendEmptyMessage(0x02);
-                        Toast.makeText(LoginActvity.this, "读取失败", Toast.LENGTH_SHORT).show();
-                    }
-                });
-    }
-
-    private void setupNotification() {
-        BleManager.getInstance().notify(
-                bleDevice,
-                MeshProtocol.SERVICE_MESH.toString(),
-                MeshProtocol.CHARA_STATUS.toString(),
-                new BleNotifyCallback() {
-                    @Override
-                    public void onNotifySuccess() {
-                        requestStatus();
-                    }
-
-                    @Override
-                    public void onNotifyFailure(BleException exception) {
-                        requestStatus();
-                    }
-
-                    @Override
-                    public void onCharacteristicChanged(byte[] data) {
-                        formatBleData(data);
-                    }
-                }
-        );
-    }
-
-    private void requestStatus() {
-        BleManager.getInstance().write(
-                bleDevice,
-                MeshProtocol.SERVICE_MESH.toString(),
-                MeshProtocol.CHARA_STATUS.toString(),
-                new byte[]{1},
-                new BleWriteCallback() {
-                    @Override
-                    public void onWriteSuccess(int current, int total, byte[] justWrite) {
-
-                    }
-
-                    @Override
-                    public void onWriteFailure(BleException exception) {
-
-                    }
-                }
-        );
-    }
-
-    public void formatBleData(byte[] bytes) {
-        if (bytes.length != 20) {
-            return;
         }
-        byte[] data = MeshProtocol.getInstance().decryptData(bytes);
-//        Log.e(TAG, "notify: " + ArraysUtils.bytesToHexString(bytes, ","));
 
-        byte opcode = data[7];
-        int venderIdLow = data[8];
-        int venderIdHigh = data[9];
-        if (venderIdLow != 0x11 || venderIdHigh != 2) {
-            // TODO: 2017/11/6 re-login
-            return;
+        @Override
+        public void onReadFailure(BleException exception) {
+            handler.sendEmptyMessage(0x02);
+            Toast.makeText(LoginActvity.this, "读取失败", Toast.LENGTH_SHORT).show();
         }
-        if (opcode == CommandFactory.Opcode.RESPONSE_DEVICE_LIST) {
-            _handleStatusData(data);
-        }
-    }
+    };
 
-    private void _handleStatusData(byte[] params) {
-        if (params == null || params.length != 20) {
-            return;
+    private BleNotifyCallback setupNotification =  new BleNotifyCallback() {
+        @Override
+        public void onNotifySuccess() {
+            ControlUtil.getInstance().requestStatus(bleDevice, new byte[]{1}, requestStatus);
         }
-        if (params[10] != 0) {
-            byte[] device = {params[10], params[11], params[12], params[13], params[14]};
-            _analysisStatusData(device);
-        }
-        if (params[15] != 0) {
-            byte[] device = {params[15], params[16], params[17], params[18], params[19]};
-            _analysisStatusData(device);
-        }
-    }
 
-    /**
-     * @param bytes 长度为5
-     */
-    private void _analysisStatusData(byte[] bytes) {
-        if (bytes == null || bytes.length != 5) {
-            return;
+        @Override
+        public void onNotifyFailure(BleException exception) {
+            ControlUtil.getInstance().requestStatus(bleDevice, new byte[]{1}, requestStatus);
         }
-        Log.d("TAG", ArraysUtils.bytesToHexString(bytes, ","));
-        int seq = bytes[1] & 0xff;
-        int productId = bytes[4] << 8 | bytes[3] & 0xff;//result:4321;
-        int state = bytes[2] & 0xff;
-        int meshAddr = bytes[0] & 0xff;
-//        Log.e(TAG, String.format("pid:0x%x", productId));
-        if (productId == 0x4004 || productId == 0x4001 || productId == 0x4321) {
-            DeviceStatus status = new DeviceStatus(meshAddr, seq, state, productId);
+
+        @Override
+        public void onCharacteristicChanged(byte[] data) {
+            ControlUtil.getInstance().formatBleData(data, dealListener);
+        }
+    };
+
+    private BleDealListener dealListener = new BleDealListener() {
+        @Override
+        public void onDeal(DeviceStatus status) {
             deviceStatuses.add(status);
-            //adapter.updateDeviceStatus(status);
         }
-    }
 
-    private void printStatus() {
-        for (DeviceStatus deviceStatus : deviceStatuses) {
-            Log.d("myTest", "" + deviceStatus.isChanged(deviceStatus));
+        @Override
+        public void onDeal(String s) {
+
         }
-    }
+    };
+
+    private BleWriteCallback requestStatus = new BleWriteCallback() {
+        @Override
+        public void onWriteSuccess(int current, int total, byte[] justWrite) {
+
+        }
+
+        @Override
+        public void onWriteFailure(BleException exception) {
+
+        }
+    };
+
 }

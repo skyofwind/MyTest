@@ -1,3 +1,15 @@
 <resources>
     <string name="app_name">My Application</string>
+    
+    <string name="name">账号:</string>
+    <string name="hint_name">请输入设备名</string>
+    <string name="password">密码:</string>
+    <string name="hint_psw">请输入密码</string>
+    <string name="login">登陆</string>
+    <string name="back">退出</string>
+    <string name="online">在线</string>
+    <string name="offline">离线</string>
+    <string name="group">群组</string>
+    <string name="relink">重连</string>
+    <string name="update">修改</string>
 </resources>

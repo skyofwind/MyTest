@@ -1,4 +1,4 @@
-package com.example.anthero.myapplication;
+package com.example.anthero.myapplication.decoration;
 
 import android.content.Context;
 import android.content.res.TypedArray;

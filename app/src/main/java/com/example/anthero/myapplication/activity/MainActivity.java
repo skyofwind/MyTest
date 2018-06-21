@@ -1,4 +1,4 @@
-package com.example.anthero.myapplication;
+package com.example.anthero.myapplication.activity;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
@@ -22,7 +22,13 @@ import com.clj.fastble.BleManager;
 import com.clj.fastble.callback.BleScanCallback;
 import com.clj.fastble.data.BleDevice;
 import com.clj.fastble.scan.BleScanRuleConfig;
-import com.example.anthero.myapplication.activity.BaseActvity;
+import com.example.anthero.myapplication.R;
+import com.example.anthero.myapplication.adpater.BlueToothRecyclerAdapter;
+import com.example.anthero.myapplication.decoration.DividerItemDecoration;
+import com.example.anthero.myapplication.utils.Config;
+import com.example.anthero.myapplication.utils.MyPrefs;
+import com.example.anthero.myapplication.utils.SystemUtil;
+import com.example.anthero.myapplication.utils.ThreadUtil;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -36,16 +42,19 @@ public class MainActivity extends BaseActvity {
 
     private final static String TAG = "MainActivity";
     //android6.0需要使用的权限声明
-    private final int SDK_PERMISSION_REQUEST = 127;
+
     @BindView(R.id.start)
     Button start;
     @BindView(R.id.blue_tooth_list)
     RecyclerView blueToothList;
     @BindView(R.id.login)
     Button login;
-    private String permissionInfo;
+    @BindView(R.id.history)
+    Button history;
+    @BindView(R.id.update)
+    Button update;
+
     private BlueToothRecyclerAdapter blutoothListAdapter;
-    private boolean isInit = false;
     private Timer timer;
     private List<BleDevice> bleDevices;
 
@@ -82,21 +91,30 @@ public class MainActivity extends BaseActvity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         ButterKnife.bind(this);
+        SystemUtil.getSystemDisplay(this);
         init();
+        setmTAG("MainActivity");
+        MyPrefs.getInstance().initSharedPreferences(this);
+        if (MyPrefs.getInstance().readString(MyPrefs.GROUNP_CONTROP).equals("")) {
+            MyPrefs.getInstance().writeString(MyPrefs.GROUNP_CONTROP, "false");
+        }
+        Config.controlType = Boolean.valueOf(MyPrefs.getInstance().readString(MyPrefs.GROUNP_CONTROP));
 
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
-
+        if (!ThreadUtil.isEmpty()) {
+            ThreadUtil.getInstance().destory();
+        }
     }
 
     //初始化
     private void init() {
 
         initRecyclerView();
-
+        initBlueTooth();
         start.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -106,9 +124,22 @@ public class MainActivity extends BaseActvity {
         login.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                startActivity(new Intent(MainActivity.this, LoginActvity.class));
+                blueToothList.smoothScrollToPosition(0);
             }
         });
+        history.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                startActivity(new Intent(MainActivity.this, HistoryActvity.class));
+            }
+        });
+        update.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                startActivity(new Intent(MainActivity.this, UpdateMeshActivity.class));
+            }
+        });
+
     }
 
     private void initRecyclerView() {
@@ -127,12 +158,11 @@ public class MainActivity extends BaseActvity {
             if (checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
                 getPersimmions();
             } else {
-                initBlueTooth();
+                //initBlueTooth();
                 searchBlueTooth();
             }
 
         } else {
-            initBlueTooth();
             searchBlueTooth();
         }
     }
@@ -145,11 +175,9 @@ public class MainActivity extends BaseActvity {
                 .setReConnectCount(1, 5000)
                 .setOperateTimeout(5000);
         BleScanRuleConfig scanRuleConfig = new BleScanRuleConfig.Builder()
-                .setDeviceName(true, "hp")
                 .setScanTimeOut(10000)
                 .build();
         BleManager.getInstance().initScanRule(scanRuleConfig);
-        isInit = true;
     }
 
     //检索蓝牙设备
@@ -212,7 +240,7 @@ public class MainActivity extends BaseActvity {
                     if (beacon.companyId == 0x0211 && beacon.isEncryptDevice()) {//公司ID和是否加密
                         int position = blutoothListAdapter.addDevice(bleDevice);
                         blueToothList.smoothScrollToPosition(position);
-                        print("RSSI : " + bleDevice.getRssi());
+                        //print("RSSI : " + bleDevice.getRssi());
                     }
                 }
             }
@@ -224,13 +252,8 @@ public class MainActivity extends BaseActvity {
 
             @Override
             public void onScanFinished(List<BleDevice> scanResultList) {
+                mlog("" + scanResultList.size());
                 handler.sendEmptyMessage(0x02);
-                blutoothListAdapter.setBackTop(new View.OnClickListener() {
-                    @Override
-                    public void onClick(View view) {
-                        blueToothList.smoothScrollToPosition(0);
-                    }
-                });
             }
         });
     }
@@ -246,48 +269,6 @@ public class MainActivity extends BaseActvity {
         Log.i(TAG, msg);
     }
 
-    //权限相关
-    @TargetApi(23)
-    private void getPersimmions() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            ArrayList<String> permissions = new ArrayList<String>();
-
-            //
-            if (checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-                permissions.add(Manifest.permission.ACCESS_COARSE_LOCATION);
-            }
-            /*
-             * 读写权限和电话状态权限非必要权限(建议授予)只会申请一次，用户同意或者禁止，只会弹一次
-             */
-            // 读写权限
-//            if (addPermission(permissions, Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
-//                permissionInfo += "Manifest.permission.WRITE_EXTERNAL_STORAGE Deny \n";
-//            }
-//            // 读取电话状态权限
-//            if (addPermission(permissions, Manifest.permission.READ_PHONE_STATE)) {
-//                permissionInfo += "Manifest.permission.READ_PHONE_STATE Deny \n";
-//            }
-
-            if (permissions.size() > 0) {
-                requestPermissions(permissions.toArray(new String[permissions.size()]), SDK_PERMISSION_REQUEST);
-            }
-        }
-    }
-
-    @TargetApi(23)
-    private boolean addPermission(ArrayList<String> permissionsList, String permission) {
-        if (checkSelfPermission(permission) != PackageManager.PERMISSION_GRANTED) { // 如果应用没有获得对应权限,则添加到列表中,准备批量申请
-            if (shouldShowRequestPermissionRationale(permission)) {
-                return true;
-            } else {
-                permissionsList.add(permission);
-                return false;
-            }
-
-        } else {
-            return true;
-        }
-    }
 
     @TargetApi(23)
     @Override

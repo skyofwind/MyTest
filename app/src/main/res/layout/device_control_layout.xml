@@ -1,0 +1,115 @@
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:crazymo="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/colorBcg">
+    <RelativeLayout
+        android:id="@+id/rl_led_paletle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="30dp"
+        android:gravity="center"
+        android:layout_alignParentTop="true"
+        >
+
+        <TextView
+            android:id="@+id/tv_choose_pre"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentLeft="true"
+            android:layout_centerInParent="true"
+            android:layout_marginLeft="24dp"
+            android:layout_marginRight="24dp"
+            android:background="@mipmap/bcg_pre_btn"
+            android:clickable="true"/>
+
+        <TextView
+            android:id="@+id/tv_choose_next"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentRight="true"
+            android:layout_centerInParent="true"
+            android:layout_marginRight="24dp"
+            android:layout_marginLeft="24dp"
+            android:background="@mipmap/bcg_next_btn"
+            android:clickable="true"/>
+
+        <com.example.anthero.myapplication.view.RainbowPalette
+            crazymo:ic_indicator="@mipmap/src_indicator"
+            crazymo:center_circle_defcolor="#0511FB"
+            android:id="@+id/imv_led_palettle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerInParent="true"
+            android:src="@mipmap/img_led_palette" />
+
+    </RelativeLayout>
+
+    <LinearLayout
+        android:id="@+id/led_y_light_layout"
+        android:layout_alignParentBottom="true"
+        android:layout_width="match_parent"
+        android:layout_height="58dp"
+        android:layout_marginLeft="24dp"
+        android:layout_marginRight="24dp"
+        android:orientation="horizontal"
+        android:background="@drawable/shape_list_border"
+        android:layout_centerHorizontal="true"
+        android:gravity="center_horizontal"
+        android:layout_marginBottom="20dp"
+        >
+
+        <TextView
+            android:id="@+id/tv_set_y_alpha"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_vertical"
+            android:paddingLeft="12dp"
+            android:text="  色温" />
+
+        <SeekBar
+            android:id="@+id/id_temperature_alpha_seek_bar"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:layout_alignRight="@id/tv_set_y_alpha"
+            android:layout_gravity="center_vertical"
+            android:progress="1000"
+            android:max="1000"
+            />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/led_w_light_layout"
+        android:layout_above="@id/led_y_light_layout"
+        android:layout_width="match_parent"
+        android:layout_height="58dp"
+        android:layout_marginLeft="24dp"
+        android:layout_marginRight="24dp"
+        android:orientation="horizontal"
+        android:background="@drawable/shape_list_border"
+        android:layout_centerHorizontal="true"
+        android:gravity="center_horizontal">
+
+        <TextView
+            android:id="@+id/tv_set_w_alpha"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_vertical"
+            android:paddingLeft="12dp"
+            android:text="  亮度" />
+
+        <SeekBar
+            android:id="@+id/id_brightness_alpha_seek_bar"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:layout_alignRight="@id/tv_set_w_alpha"
+            android:layout_gravity="center_vertical"
+            android:progress="10"
+            android:max="255"
+            />
+    </LinearLayout>
+
+
+</RelativeLayout>
